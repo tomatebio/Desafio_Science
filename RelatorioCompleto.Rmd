@@ -128,7 +128,7 @@ Para encontrar as tendências construi dois graficos um usando todos os dados qu
 
 ```{r}
 library(lattice)
-splom(~Dados_relevantes,groups=as.factor(default),data=Dados_relevantes,pch=20,type="p",cex=1)
+#splom(~Dados_relevantes,groups=as.factor(default),data=Dados_relevantes,pch=20,type="p",cex=1)
 # Este grafico está salvo em arquivo separado TodasVar.pdf
 
 ggplot(Dados_relevantes, aes(x=age, fill=default)) + geom_density()
