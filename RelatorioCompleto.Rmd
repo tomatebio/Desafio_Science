@@ -1,0 +1,155 @@
+---
+title: "Desafio Data Science"
+author: "Carlos Tonhatti"
+date: "September 27, 2018"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Carregamento dos dados e verificação
+
+
+```{r load}
+# Carregar dados 
+
+Dados_brutos<-read.csv2("bank-full.csv")
+head(Dados_brutos)
+dim(Dados_brutos)
+
+summary(Dados_brutos)
+```
+
+## Questão 1 - Qual profissão tem mais tendência a fazer um empréstimo? De qual tipo?
+
+Primeiro passo foi contar quantos empréstimos por profissão tomando cuidado para descontar os casos que possuem ambos tipos de empréstimos 
+```{r jobs}
+# profissoes
+job_per_category<-table(Dados_brutos$job)
+personal_loan_job<-table(Dados_brutos$job,Dados_brutos$loan)
+housing_loan_job<-table(Dados_brutos$job,Dados_brutos$housing)
+both<-table(Dados_brutos$job, Dados_brutos$housing=="yes" & Dados_brutos$loan=="yes")
+
+## Número de emprestimos por categoria excluindo aqueles que fazem ambos emprestimos
+grouping_positive_loan_job<-data.frame(personal=personal_loan_job[,2], housing=housing_loan_job[,2])
+Total_emprestimos<-rowSums(grouping_positive_loan_job)-both[,2]
+Total_emprestimos_percent<-Total_emprestimos/job_per_category
+Total_emprestimos_percent<-as.data.frame(Total_emprestimos_percent)
+
+# Número de ambos empréstimos
+(Both_category<-both[,2]/job_per_category)
+
+
+
+```
+
+
+```{r plot1}
+library(ggplot2)
+
+ggplot(Total_emprestimos_percent,aes(reorder(Var1,Freq),y=Freq))+geom_col()+ coord_flip()+
+    labs(x="Empregos", y="Probabilidade de fazer um empréstimo ")
+```
+
+```{r}
+# Dividindo por tipo de emprestimo
+grouping_percent<-grouping_positive_loan_job/job_per_category
+ggplot(grouping_percent, aes(personal, housing)) + geom_text(aes(label=rownames(grouping_percent)))
+```
+
+ A profissão que tem maior tendencia de fazer um empréstimo é a de operário (blue-collar). No banco de dados analisado 78% dos operários fazem algum tipo de empréstimo. Sendo 72% dos operários tem empréstimo imobiliário, 13% tem empréstimo pessoal e 11% possui ambos empréstimos.
+ 
+# Questão 2 - Fazendo uma relação entre número de contatos e sucesso da campanha quais são os pontos relevantes a serem observados?
+
+```{r}
+### Contatos 
+
+ggplot(Dados_brutos,aes(x=campaign, fill=y))+ geom_bar(position = "dodge")
+```
+
+Um grande número de contatos não aumenta a chance de sucesso do contato. 
+
+# Questão 3 - Baseando-se nos resultados de adesão desta campanha qual o número médio e o máximo de ligações que você indica para otimizar a adesão? 
+
+Conhecendo as distribuições do número de chamadas é possível indicar o número de ligações que deve ser feito. 
+```{r}
+
+Sucess<-Dados_brutos[Dados_brutos$y=="yes",]
+Fail<-Dados_brutos[Dados_brutos$y=="no",]
+summary(Sucess)
+summary(Fail)
+
+# Achar os quantis
+quantile(Sucess$campaign, probs = seq(0,1, 0.05))
+```
+
+ Dada as distribuições apresentadas indico que o número médio de ligações seja 2 pois é a média das ligações que se converteram em adesão. O número  máximo que eu indico para obter 95% de aproveitamento é de 5 ligações. 
+ 
+# Questão 4 O resultado da campanha anterior tem relevância na campanha atual?
+  Nesta questão foi necessãrio limpar os dados pois a campanha previa apresenta duas respostas que não podem ser comparadas ("other", "unknown"). A relação entre as duas variáveis foi realizada atravez do teste de contigência usando chi-quadrado.
+
+```{r}
+# Selecionar apenas os dados de desempenho da campanha previa e atual
+previa_atual<-data.frame(previa=Dados_brutos$poutcome, atual= Dados_brutos$y)
+
+# Limpar os dados. retirar classes "outros" e "desconhecidos" pois não tem como comparar
+ss<-ifelse(previa_atual$previa=="other" | previa_atual$previa=="unknown",F,T)
+JustCamp<- previa_atual[ss,]
+JustCamp<-data.frame(previa=factor(JustCamp$previa),atual=factor(JustCamp$atual))
+
+# Constando as ocorrencias
+table(JustCamp)
+
+# Teste do chi quadrado
+X2test<-chisq.test(table(JustCamp))
+X2test
+```
+
+ O teste de chi-quadrado mostrou significancia estatística. Portanto, há relação entre as duas variáveis. 
+ 
+ Sim, o resultado da campanha anterior tem relevância para o resultado da campanha atual. Uma falha na campanha passada pode resultar em uma falha na campanha atual.
+ 
+#  Questão 5 - Qual o fator determinante para que o banco exija um seguro de crédito?
+
+Para esta análise e a proxima eu exclui as variáveis sobre as campanhas de marketing pois creio que estas não tem relação á exigência de seguro ou o perfil de quem tem empréstimo imobiliário. 
+
+```{r}
+## Caracteristicas do emprestimo imobiliario 
+# apenas dados que interessam. Excluir os dados sobre as campanhas de marketing
+
+Dados_relevantes<-Dados_brutos[,1:8]
+
+head(Dados_relevantes)
+```
+
+Para encontrar as tendências construi dois graficos um usando todos os dados que considero relevantes e outro para confirmar a tendência observada.
+
+```{r}
+library(lattice)
+splom(~Dados_relevantes,groups=as.factor(default),data=Dados_relevantes,pch=20,type="p",cex=1)
+# Este grafico está salvo em arquivo separado TodasVar.pdf
+
+ggplot(Dados_relevantes, aes(x=age, fill=default)) + geom_density()
+
+```
+
+ O fator é a idade. O banco oferece o credito default sem necessitar de seguro do credito para quem esta em idade economicamente ativa (<60 anos). Embora a  variável saldo (balance) seja melhor para classificar quem tem credito sem seguro não faz sentido o banco usar o saldo baixo como condição para não exigir seguro.
+
+# Questão 6 - Quais são as características mais proeminentes de um cliente que possua empréstimo imobiliário?
+
+Para encontrar as principais caracteristicas usei um algoritmo de classificação (árvore de decisão). 
+
+```{r, cache=TRUE}
+library(caret)
+
+model<- train(housing ~ ., data = Dados_relevantes, 
+                 method = "rpart")
+library(rattle)
+fancyRpartPlot(model$finalModel)
+```
+
+ O perfil é: uma pessoa que tenha um empréstimo imobiliário tem menos que 55 anos, é operário e tem um saldo bancário maior que -66 euros 
+
+

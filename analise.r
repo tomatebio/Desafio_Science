@@ -23,16 +23,11 @@ Total_emprestimos_percent<-as.data.frame(Total_emprestimos_percent)
 both[,2]/job_per_category
 library(ggplot2)
 ggplot(Total_emprestimos_percent,aes(reorder(Var1,Freq),y=Freq))+geom_col()+ coord_flip()+
-    labs(x="Empregos", y="Probabilidade de fazer um emprestimo ")
+    labs(x="Empregos", y="Probabilidade de fazer um empréstimo ")
 
 # Dividindo por categoria
-
-
-
 grouping_percent<-grouping_positive_loan_job/job_per_category
-
 plot(grouping_percent$personal,grouping_percent$housing)
-
 ggplot(grouping_percent, aes(personal, housing)) + geom_text(aes(label=rownames(grouping_percent)))
 
 
